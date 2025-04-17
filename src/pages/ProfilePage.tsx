@@ -1,13 +1,14 @@
 
 import Layout from "@/components/Layout";
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, PlusCircle } from "lucide-react";
+import { Pencil, PlusCircle, Loader2, ImageIcon } from "lucide-react";
+import { uploadImage } from "@/utils/imageUpload";
 
 interface Profile {
   id: string;
@@ -18,6 +19,7 @@ interface Profile {
 
 interface Post {
   id: string;
+  user_id: string;
   content: string;
   image_url?: string;
   created_at: string;
@@ -34,6 +36,9 @@ const ProfilePage = () => {
   const [editedBio, setEditedBio] = useState("");
   const [newPostContent, setNewPostContent] = useState("");
   const [isCreatingPost, setIsCreatingPost] = useState(false);
+  const [selectedProfileImage, setSelectedProfileImage] = useState<File | null>(null);
+  const [selectedPostImage, setSelectedPostImage] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   
   useEffect(() => {
     if (user) {
@@ -89,14 +94,39 @@ const ProfilePage = () => {
     }
   };
   
+  const handleProfileImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setSelectedProfileImage(event.target.files[0]);
+    }
+  };
+  
+  const handlePostImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setSelectedPostImage(event.target.files[0]);
+    }
+  };
+  
   const handleSaveProfile = async () => {
     try {
       if (!user) return;
+      
+      setUploadingImage(true);
+      
+      let avatarUrl = profile?.avatar_url;
+      
+      // If a new profile image was selected, upload it
+      if (selectedProfileImage) {
+        const imageUrl = await uploadImage(selectedProfileImage);
+        if (imageUrl) {
+          avatarUrl = imageUrl;
+        }
+      }
       
       const updates = {
         id: user.id,
         username: editedUsername,
         bio: editedBio,
+        avatar_url: avatarUrl,
         updated_at: new Date().toISOString()
       };
       
@@ -108,11 +138,14 @@ const ProfilePage = () => {
       if (error) throw error;
       
       setIsEditing(false);
+      setSelectedProfileImage(null);
       fetchProfile(); // Refresh profile data
       toast.success("Profile updated successfully");
     } catch (error) {
       console.error("Error updating profile:", error);
       toast.error("Failed to update profile");
+    } finally {
+      setUploadingImage(false);
     }
   };
   
@@ -122,9 +155,17 @@ const ProfilePage = () => {
       
       setIsCreatingPost(true);
       
+      let imageUrl = null;
+      
+      // If an image was selected for the post, upload it
+      if (selectedPostImage) {
+        imageUrl = await uploadImage(selectedPostImage);
+      }
+      
       const newPost = {
         user_id: user.id,
         content: newPostContent,
+        image_url: imageUrl,
         likes: 0,
         created_at: new Date().toISOString()
       };
@@ -136,6 +177,7 @@ const ProfilePage = () => {
       if (error) throw error;
       
       setNewPostContent("");
+      setSelectedPostImage(null);
       fetchUserPosts(); // Refresh posts
       toast.success("Post created successfully");
     } catch (error) {
@@ -166,12 +208,23 @@ const ProfilePage = () => {
             <div className="space-y-4">
               <div className="flex flex-col items-center mb-4">
                 <Avatar className="h-24 w-24 mb-2">
-                  <AvatarImage src={profile?.avatar_url || ''} />
+                  <AvatarImage 
+                    src={selectedProfileImage ? URL.createObjectURL(selectedProfileImage) : profile?.avatar_url || ''} 
+                  />
                   <AvatarFallback>{profile?.username?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <Button variant="outline" size="sm" className="mt-2">
-                  Change Photo
-                </Button>
+                
+                <label className="cursor-pointer">
+                  <Input 
+                    type="file" 
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleProfileImageChange}
+                  />
+                  <Button variant="outline" size="sm" type="button" className="mt-2">
+                    Change Photo
+                  </Button>
+                </label>
               </div>
               
               <div>
@@ -193,7 +246,19 @@ const ProfilePage = () => {
               
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
-                <Button onClick={handleSaveProfile}>Save</Button>
+                <Button 
+                  onClick={handleSaveProfile} 
+                  disabled={uploadingImage}
+                >
+                  {uploadingImage ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save'
+                  )}
+                </Button>
               </div>
             </div>
           ) : (
@@ -233,16 +298,49 @@ const ProfilePage = () => {
             onChange={(e) => setNewPostContent(e.target.value)}
             className="mb-3"
           />
+          
+          {selectedPostImage && (
+            <div className="mb-3 relative rounded-md overflow-hidden">
+              <img 
+                src={URL.createObjectURL(selectedPostImage)} 
+                alt="Post preview" 
+                className="w-full h-auto max-h-60 object-cover"
+              />
+              <button 
+                onClick={() => setSelectedPostImage(null)}
+                className="absolute top-2 right-2 bg-black bg-opacity-50 rounded-full p-1 text-white"
+              >
+                &times;
+              </button>
+            </div>
+          )}
+          
           <div className="flex justify-between items-center">
-            <Button variant="outline" size="sm">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Image
-            </Button>
+            <label className="cursor-pointer">
+              <Input 
+                type="file" 
+                accept="image/*"
+                className="hidden"
+                onChange={handlePostImageChange}
+              />
+              <Button variant="outline" size="sm" type="button">
+                <ImageIcon className="mr-2 h-4 w-4" />
+                Add Image
+              </Button>
+            </label>
+            
             <Button 
               onClick={handleCreatePost} 
               disabled={!newPostContent.trim() || isCreatingPost}
             >
-              Post
+              {isCreatingPost ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Posting...
+                </>
+              ) : (
+                'Post'
+              )}
             </Button>
           </div>
         </div>
@@ -251,7 +349,8 @@ const ProfilePage = () => {
         <h2 className="text-lg font-semibold mb-3">My Posts</h2>
         {loading ? (
           <div className="flex justify-center my-8">
-            <p>Loading posts...</p>
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+            <p className="ml-2">Loading posts...</p>
           </div>
         ) : posts.length === 0 ? (
           <div className="text-center my-8 py-10 bg-gray-50 rounded-lg">
@@ -273,6 +372,11 @@ const ProfilePage = () => {
                       src={post.image_url} 
                       alt="Post content" 
                       className="w-full h-auto object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.onerror = null;
+                        target.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
+                      }}
                     />
                   </div>
                 )}

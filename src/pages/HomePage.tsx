@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface Profile {
   username: string;
@@ -29,6 +30,7 @@ const HomePage = () => {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPosts();
@@ -37,8 +39,9 @@ const HomePage = () => {
   const fetchPosts = async () => {
     try {
       setLoading(true);
+      setError(null);
       
-      // First, get posts
+      // Get posts from the posts table
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select('*')
@@ -46,7 +49,6 @@ const HomePage = () => {
       
       if (postsError) throw postsError;
       
-      // If we have posts, get the profile info for each user
       if (postsData) {
         const formattedPosts = await Promise.all(
           postsData.map(async (post) => {
@@ -69,6 +71,7 @@ const HomePage = () => {
       }
     } catch (error) {
       console.error('Error fetching posts:', error);
+      setError("Failed to load posts. Please try again later.");
       toast.error('Failed to load posts');
     } finally {
       setLoading(false);
@@ -108,6 +111,10 @@ const HomePage = () => {
     return date.toLocaleDateString();
   };
 
+  const handleRetry = () => {
+    fetchPosts();
+  };
+
   return (
     <Layout>
       <div className="px-4 py-6 pb-20">
@@ -125,8 +132,14 @@ const HomePage = () => {
         </div>
 
         {loading ? (
-          <div className="flex justify-center my-8">
+          <div className="flex flex-col justify-center items-center my-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
             <p>Loading posts...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center my-8 py-10 bg-gray-50 rounded-lg">
+            <p className="text-red-500 mb-4">{error}</p>
+            <Button onClick={handleRetry}>Retry</Button>
           </div>
         ) : posts.length === 0 ? (
           <div className="text-center my-8 py-10 bg-gray-50 rounded-lg">
@@ -155,6 +168,11 @@ const HomePage = () => {
                       src={post.image_url} 
                       alt="Post content" 
                       className="w-full h-auto object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.onerror = null;
+                        target.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
+                      }}
                     />
                   </div>
                 )}
