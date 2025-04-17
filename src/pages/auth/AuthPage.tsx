@@ -32,13 +32,14 @@ const AuthPage = () => {
         });
         if (error) throw error;
         toast.success("Check your email to confirm your account!");
+        navigate("/dashboard");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
-        navigate("/");
+        navigate("/dashboard");
       }
     } catch (error: any) {
       toast.error(error.message);
