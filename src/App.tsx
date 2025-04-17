@@ -9,6 +9,10 @@ import Index from "./pages/Index";
 import AuthPage from "./pages/auth/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import HomePage from "./pages/HomePage";
+import SearchPage from "./pages/SearchPage";
+import MessagesPage from "./pages/MessagesPage";
+import ProfilePage from "./pages/ProfilePage";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +40,38 @@ const App = () => (
                   <Dashboard />
                 </ProtectedRoute>
               }
+            />
+            <Route 
+              path="/home" 
+              element={
+                <ProtectedRoute>
+                  <HomePage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/search" 
+              element={
+                <ProtectedRoute>
+                  <SearchPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/messages" 
+              element={
+                <ProtectedRoute>
+                  <MessagesPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              } 
             />
             <Route path="*" element={<NotFound />} />
           </Routes>

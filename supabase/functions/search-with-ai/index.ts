@@ -15,12 +15,17 @@ serve(async (req) => {
 
   try {
     const { query } = await req.json();
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    
+    if (!openAIApiKey) {
+      throw new Error('OPENAI_API_KEY is not configured');
+    }
 
-    // Create OpenAI completion to generate search context
+    // Generate search context with OpenAI
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -28,11 +33,11 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant that helps generate relevant search terms and context for database queries.'
+            content: 'You are a helpful assistant that helps generate relevant search terms and context for bird database queries.'
           },
           {
             role: 'user',
-            content: `Generate relevant search terms for: ${query}`
+            content: `Generate relevant search terms for birds related to: ${query}. Include scientific names, habitats, and related species.`
           }
         ],
       }),
@@ -41,23 +46,43 @@ serve(async (req) => {
     const openAIData = await openAIResponse.json();
     const enhancedSearchTerms = openAIData.choices[0].message.content;
 
+    console.log("Enhanced search terms:", enhancedSearchTerms);
+
     // Use the supabase client to search through your database
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    // Since we don't have a birds table yet, let's return mock data
+    const mockBirds = [
+      {
+        id: '1',
+        common_name: 'American Robin',
+        scientific_name: 'Turdus migratorius',
+        description: 'A migratory songbird of the true thrush genus and Turdidae family.',
+        habitat: 'Woodlands, gardens, parks, yards',
+        diet: 'Earthworms, insects, fruits',
+        image_url: 'https://images.unsplash.com/photo-1596025148011-919193407609'
+      },
+      {
+        id: '2',
+        common_name: 'Blue Jay',
+        scientific_name: 'Cyanocitta cristata',
+        description: 'A passerine bird in the family Corvidae, native to eastern North America.',
+        habitat: 'Forests, particularly with oaks, suburban areas',
+        diet: 'Acorns, nuts, seeds, insects',
+        image_url: 'https://images.unsplash.com/photo-1602523069147-73f5b96a4038'
+      }
+    ];
+    
+    // Filter based on the query
+    const results = mockBirds.filter(bird => 
+      bird.common_name.toLowerCase().includes(query.toLowerCase()) ||
+      bird.scientific_name.toLowerCase().includes(query.toLowerCase()) ||
+      bird.habitat.toLowerCase().includes(query.toLowerCase()) ||
+      enhancedSearchTerms.toLowerCase().includes(bird.common_name.toLowerCase()) ||
+      enhancedSearchTerms.toLowerCase().includes(bird.scientific_name.toLowerCase())
     );
-
-    // Example: Search through profiles table
-    const { data: searchResults, error: searchError } = await supabaseClient
-      .from('profiles')
-      .select('*')
-      .textSearch('username', enhancedSearchTerms);
-
-    if (searchError) throw searchError;
 
     return new Response(
       JSON.stringify({
-        results: searchResults,
+        results,
         context: enhancedSearchTerms,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
