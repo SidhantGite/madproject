@@ -15,14 +15,19 @@ const Index = () => {
   }, [user, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <div className="space-y-4">
-          <h1 className="text-4xl font-bold mb-4">Welcome to BirdConnect</h1>
-          <p className="text-xl text-gray-600 mb-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+      <div className="text-center max-w-md w-full">
+        <div className="space-y-6">
+          <h1 className="text-4xl font-bold">Welcome to BirdConnect</h1>
+          <p className="text-xl text-gray-600">
             Join our community of bird enthusiasts
           </p>
-          <Button onClick={() => navigate("/auth")}>Get Started</Button>
+          <Button 
+            onClick={() => navigate("/auth")} 
+            className="w-full py-6 text-lg"
+          >
+            Get Started
+          </Button>
         </div>
       </div>
     </div>

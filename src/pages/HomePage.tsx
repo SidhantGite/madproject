@@ -8,6 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 
+interface Profile {
+  username: string;
+  avatar_url?: string;
+}
+
 interface Post {
   id: string;
   user_id: string;
@@ -32,27 +37,34 @@ const HomePage = () => {
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // First, get posts
+      const { data: postsData, error: postsError } = await supabase
         .from('posts')
-        .select(`
-          id,
-          user_id,
-          content,
-          image_url,
-          created_at,
-          likes,
-          profiles(username, avatar_url)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (postsError) throw postsError;
       
-      if (data) {
-        const formattedPosts = data.map(post => ({
-          ...post,
-          username: post.profiles?.username || 'Unknown user',
-          avatar_url: post.profiles?.avatar_url,
-        }));
+      // If we have posts, get the profile info for each user
+      if (postsData) {
+        const formattedPosts = await Promise.all(
+          postsData.map(async (post) => {
+            // Get user profile info
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('username, avatar_url')
+              .eq('id', post.user_id)
+              .single();
+              
+            return {
+              ...post,
+              username: profileData?.username || 'Unknown user',
+              avatar_url: profileData?.avatar_url,
+            };
+          })
+        );
+        
         setPosts(formattedPosts);
       }
     } catch (error) {

@@ -97,7 +97,7 @@ const ProfilePage = () => {
         id: user.id,
         username: editedUsername,
         bio: editedBio,
-        updated_at: new Date()
+        updated_at: new Date().toISOString()
       };
       
       const { error } = await supabase
@@ -125,7 +125,8 @@ const ProfilePage = () => {
       const newPost = {
         user_id: user.id,
         content: newPostContent,
-        created_at: new Date()
+        likes: 0,
+        created_at: new Date().toISOString()
       };
       
       const { error } = await supabase
