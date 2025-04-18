@@ -1,20 +1,30 @@
 
 import { Post } from "@/types/database";
 import { formatDate } from "@/utils/dateFormatter";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface UserPostsProps {
   posts: Post[];
   loading: boolean;
+  error: string | null;
 }
 
-export const UserPosts = ({ posts, loading }: UserPostsProps) => {
+export const UserPosts = ({ posts, loading, error }: UserPostsProps) => {
   if (loading) {
     return (
       <div className="flex justify-center my-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-        <p className="ml-2">Loading posts...</p>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive" className="my-4">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
     );
   }
 

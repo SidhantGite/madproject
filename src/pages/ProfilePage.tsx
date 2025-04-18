@@ -10,11 +10,15 @@ import { ProfileEditor } from "@/components/profile/ProfileEditor";
 import { ProfileDisplay } from "@/components/profile/ProfileDisplay";
 import { CreatePost } from "@/components/profile/CreatePost";
 import { UserPosts } from "@/components/profile/UserPosts";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 
 interface ProfilePageState {
   profile: Profile | null;
   posts: Post[];
   loading: boolean;
+  profileLoading: boolean;
+  error: string | null;
   isEditing: boolean;
 }
 
@@ -24,6 +28,8 @@ const ProfilePage = () => {
     profile: null,
     posts: [],
     loading: true,
+    profileLoading: true,
+    error: null,
     isEditing: false,
   });
 
@@ -38,6 +44,8 @@ const ProfilePage = () => {
     try {
       if (!user) return;
       
+      setState(prev => ({ ...prev, profileLoading: true, error: null }));
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -46,21 +54,25 @@ const ProfilePage = () => {
         
       if (error) throw error;
       
-      if (data) {
-        setState(prev => ({
-          ...prev,
-          profile: data,
-        }));
-      }
+      setState(prev => ({
+        ...prev,
+        profile: data,
+        profileLoading: false
+      }));
     } catch (error) {
       console.error("Error fetching profile:", error);
-      toast.error("Failed to load profile");
+      setState(prev => ({
+        ...prev,
+        profileLoading: false,
+        error: "Failed to load profile data"
+      }));
+      toast.error("Could not load profile data");
     }
   };
 
   const fetchUserPosts = async () => {
     try {
-      setState(prev => ({ ...prev, loading: true }));
+      setState(prev => ({ ...prev, loading: true, error: null }));
       if (!user) return;
       
       const { data, error } = await supabase
@@ -71,14 +83,19 @@ const ProfilePage = () => {
         
       if (error) throw error;
       
-      if (data) {
-        setState(prev => ({ ...prev, posts: data }));
-      }
+      setState(prev => ({
+        ...prev,
+        posts: data || [],
+        loading: false
+      }));
     } catch (error) {
       console.error("Error fetching posts:", error);
-      toast.error("Failed to load your posts");
-    } finally {
-      setState(prev => ({ ...prev, loading: false }));
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: "Failed to load posts"
+      }));
+      toast.error("Could not load your posts");
     }
   };
 
@@ -92,8 +109,18 @@ const ProfilePage = () => {
           onSignOut={signOut}
         />
         
+        {state.error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertDescription>{state.error}</AlertDescription>
+          </Alert>
+        )}
+        
         <div className="bg-white p-4 rounded-lg shadow mb-6">
-          {state.isEditing ? (
+          {state.profileLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : state.isEditing ? (
             <ProfileEditor
               profile={state.profile}
               userEmail={user.email}
@@ -121,6 +148,7 @@ const ProfilePage = () => {
         <UserPosts 
           posts={state.posts}
           loading={state.loading}
+          error={state.error}
         />
       </div>
     </Layout>

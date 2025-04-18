@@ -21,11 +21,13 @@ export const ProfileEditor = ({ profile, userEmail, onCancel, onProfileUpdate }:
   const [editedBio, setEditedBio] = useState(profile?.bio || '');
   const [selectedProfileImage, setSelectedProfileImage] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleSaveProfile = async () => {
     try {
       if (!profile?.id) return;
       
+      setIsUpdating(true);
       setUploadingImage(true);
       
       let avatarUrl = profile.avatar_url;
@@ -58,6 +60,7 @@ export const ProfileEditor = ({ profile, userEmail, onCancel, onProfileUpdate }:
       console.error("Error updating profile:", error);
       toast.error("Failed to update profile");
     } finally {
+      setIsUpdating(false);
       setUploadingImage(false);
     }
   };
@@ -96,6 +99,7 @@ export const ProfileEditor = ({ profile, userEmail, onCancel, onProfileUpdate }:
         <Input
           value={editedUsername}
           onChange={(e) => setEditedUsername(e.target.value)}
+          disabled={isUpdating}
         />
       </div>
       
@@ -105,16 +109,23 @@ export const ProfileEditor = ({ profile, userEmail, onCancel, onProfileUpdate }:
           value={editedBio}
           onChange={(e) => setEditedBio(e.target.value)}
           placeholder="Tell us about yourself..."
+          disabled={isUpdating}
         />
       </div>
       
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button 
+          variant="outline" 
+          onClick={onCancel}
+          disabled={isUpdating}
+        >
+          Cancel
+        </Button>
         <Button 
           onClick={handleSaveProfile} 
-          disabled={uploadingImage}
+          disabled={isUpdating}
         >
-          {uploadingImage ? (
+          {isUpdating ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Saving...
