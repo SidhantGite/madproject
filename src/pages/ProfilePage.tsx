@@ -1,4 +1,3 @@
-
 import Layout from "@/components/Layout";
 import { useState, useEffect, ChangeEvent } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,44 +8,45 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Pencil, PlusCircle, Loader2, ImageIcon } from "lucide-react";
 import { uploadImage } from "@/utils/imageUpload";
+import { Post, Profile } from "@/types/database";
 
-interface Profile {
-  id: string;
-  username: string;
-  avatar_url: string | null;
-  bio: string | null;
-}
-
-interface Post {
-  id: string;
-  user_id: string;
-  content: string;
-  image_url?: string;
-  created_at: string;
-  likes: number;
+interface ProfilePageState {
+  profile: Profile | null;
+  posts: Post[];
+  loading: boolean;
+  isEditing: boolean;
+  editedUsername: string;
+  editedBio: string;
+  newPostContent: string;
+  isCreatingPost: boolean;
+  selectedProfileImage: File | null;
+  selectedPostImage: File | null;
+  uploadingImage: boolean;
 }
 
 const ProfilePage = () => {
-  const { user, signOut } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedUsername, setEditedUsername] = useState("");
-  const [editedBio, setEditedBio] = useState("");
-  const [newPostContent, setNewPostContent] = useState("");
-  const [isCreatingPost, setIsCreatingPost] = useState(false);
-  const [selectedProfileImage, setSelectedProfileImage] = useState<File | null>(null);
-  const [selectedPostImage, setSelectedPostImage] = useState<File | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  
+  const { user } = useAuth();
+  const [state, setState] = useState<ProfilePageState>({
+    profile: null,
+    posts: [],
+    loading: true,
+    isEditing: false,
+    editedUsername: "",
+    editedBio: "",
+    newPostContent: "",
+    isCreatingPost: false,
+    selectedProfileImage: null,
+    selectedPostImage: null,
+    uploadingImage: false,
+  });
+
   useEffect(() => {
     if (user) {
       fetchProfile();
       fetchUserPosts();
     }
   }, [user]);
-  
+
   const fetchProfile = async () => {
     try {
       if (!user) return;
@@ -60,19 +60,22 @@ const ProfilePage = () => {
       if (error) throw error;
       
       if (data) {
-        setProfile(data);
-        setEditedUsername(data.username || '');
-        setEditedBio(data.bio || '');
+        setState(prev => ({
+          ...prev,
+          profile: data,
+          editedUsername: data.username || '',
+          editedBio: data.bio || '',
+        }));
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
       toast.error("Failed to load profile");
     }
   };
-  
+
   const fetchUserPosts = async () => {
     try {
-      setLoading(true);
+      setState(prev => ({ ...prev, loading: true }));
       if (!user) return;
       
       const { data, error } = await supabase
@@ -84,39 +87,38 @@ const ProfilePage = () => {
       if (error) throw error;
       
       if (data) {
-        setPosts(data);
+        setState(prev => ({ ...prev, posts: data }));
       }
     } catch (error) {
       console.error("Error fetching posts:", error);
       toast.error("Failed to load your posts");
     } finally {
-      setLoading(false);
+      setState(prev => ({ ...prev, loading: false }));
     }
   };
-  
+
   const handleProfileImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
-      setSelectedProfileImage(event.target.files[0]);
+      setState(prev => ({ ...prev, selectedProfileImage: event.target.files[0] }));
     }
   };
-  
+
   const handlePostImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
-      setSelectedPostImage(event.target.files[0]);
+      setState(prev => ({ ...prev, selectedPostImage: event.target.files[0] }));
     }
   };
-  
+
   const handleSaveProfile = async () => {
     try {
       if (!user) return;
       
       setUploadingImage(true);
       
-      let avatarUrl = profile?.avatar_url;
+      let avatarUrl = state.profile?.avatar_url;
       
-      // If a new profile image was selected, upload it
-      if (selectedProfileImage) {
-        const imageUrl = await uploadImage(selectedProfileImage);
+      if (state.selectedProfileImage) {
+        const imageUrl = await uploadImage(state.selectedProfileImage);
         if (imageUrl) {
           avatarUrl = imageUrl;
         }
@@ -124,8 +126,8 @@ const ProfilePage = () => {
       
       const updates = {
         id: user.id,
-        username: editedUsername,
-        bio: editedBio,
+        username: state.editedUsername,
+        bio: state.editedBio,
         avatar_url: avatarUrl,
         updated_at: new Date().toISOString()
       };
@@ -137,9 +139,8 @@ const ProfilePage = () => {
         
       if (error) throw error;
       
-      setIsEditing(false);
-      setSelectedProfileImage(null);
-      fetchProfile(); // Refresh profile data
+      setState(prev => ({ ...prev, isEditing: false, selectedProfileImage: null }));
+      fetchProfile();
       toast.success("Profile updated successfully");
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -148,23 +149,22 @@ const ProfilePage = () => {
       setUploadingImage(false);
     }
   };
-  
+
   const handleCreatePost = async () => {
     try {
-      if (!user || !newPostContent.trim()) return;
+      if (!user || !state.newPostContent.trim()) return;
       
       setIsCreatingPost(true);
       
       let imageUrl = null;
       
-      // If an image was selected for the post, upload it
-      if (selectedPostImage) {
-        imageUrl = await uploadImage(selectedPostImage);
+      if (state.selectedPostImage) {
+        imageUrl = await uploadImage(state.selectedPostImage);
       }
       
       const newPost = {
         user_id: user.id,
-        content: newPostContent,
+        content: state.newPostContent,
         image_url: imageUrl,
         likes: 0,
         created_at: new Date().toISOString()
@@ -176,9 +176,8 @@ const ProfilePage = () => {
         
       if (error) throw error;
       
-      setNewPostContent("");
-      setSelectedPostImage(null);
-      fetchUserPosts(); // Refresh posts
+      setState(prev => ({ ...prev, newPostContent: "", selectedPostImage: null }));
+      fetchUserPosts();
       toast.success("Post created successfully");
     } catch (error) {
       console.error("Error creating post:", error);
@@ -187,12 +186,12 @@ const ProfilePage = () => {
       setIsCreatingPost(false);
     }
   };
-  
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString();
   };
-  
+
   return (
     <Layout>
       <div className="px-4 py-6 pb-20">
@@ -204,14 +203,14 @@ const ProfilePage = () => {
         </div>
         
         <div className="bg-white p-4 rounded-lg shadow mb-6">
-          {isEditing ? (
+          {state.isEditing ? (
             <div className="space-y-4">
               <div className="flex flex-col items-center mb-4">
                 <Avatar className="h-24 w-24 mb-2">
                   <AvatarImage 
-                    src={selectedProfileImage ? URL.createObjectURL(selectedProfileImage) : profile?.avatar_url || ''} 
+                    src={state.selectedProfileImage ? URL.createObjectURL(state.selectedProfileImage) : state.profile?.avatar_url || ''} 
                   />
-                  <AvatarFallback>{profile?.username?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback>{state.profile?.username?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 
                 <label className="cursor-pointer">
@@ -230,22 +229,22 @@ const ProfilePage = () => {
               <div>
                 <label className="block text-sm font-medium mb-1">Username</label>
                 <Input
-                  value={editedUsername}
-                  onChange={(e) => setEditedUsername(e.target.value)}
+                  value={state.editedUsername}
+                  onChange={(e) => setState(prev => ({ ...prev, editedUsername: e.target.value }))}
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium mb-1">Bio</label>
                 <Input
-                  value={editedBio}
-                  onChange={(e) => setEditedBio(e.target.value)}
+                  value={state.editedBio}
+                  onChange={(e) => setState(prev => ({ ...prev, editedBio: e.target.value }))}
                   placeholder="Tell us about yourself..."
                 />
               </div>
               
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setState(prev => ({ ...prev, isEditing: false }))}>Cancel</Button>
                 <Button 
                   onClick={handleSaveProfile} 
                   disabled={uploadingImage}
@@ -265,21 +264,21 @@ const ProfilePage = () => {
             <div>
               <div className="flex flex-col items-center mb-4">
                 <Avatar className="h-24 w-24 mb-2">
-                  <AvatarImage src={profile?.avatar_url || ''} />
-                  <AvatarFallback>{profile?.username?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                  <AvatarImage src={state.profile?.avatar_url || ''} />
+                  <AvatarFallback>{state.profile?.username?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <h2 className="text-xl font-bold">{profile?.username || user?.email}</h2>
+                <h2 className="text-xl font-bold">{state.profile?.username || user?.email}</h2>
               </div>
               
-              {profile?.bio && (
-                <p className="text-center text-gray-600 mb-4">{profile.bio}</p>
+              {state.profile?.bio && (
+                <p className="text-center text-gray-600 mb-4">{state.profile.bio}</p>
               )}
               
               <div className="flex justify-center">
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => setState(prev => ({ ...prev, isEditing: true }))}
                 >
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit Profile
@@ -289,25 +288,24 @@ const ProfilePage = () => {
           )}
         </div>
         
-        {/* Create Post */}
         <div className="bg-white p-4 rounded-lg shadow mb-6">
           <h2 className="text-lg font-medium mb-3">Create Post</h2>
           <Input
             placeholder="What's on your mind?"
-            value={newPostContent}
-            onChange={(e) => setNewPostContent(e.target.value)}
+            value={state.newPostContent}
+            onChange={(e) => setState(prev => ({ ...prev, newPostContent: e.target.value }))}
             className="mb-3"
           />
           
-          {selectedPostImage && (
+          {state.selectedPostImage && (
             <div className="mb-3 relative rounded-md overflow-hidden">
               <img 
-                src={URL.createObjectURL(selectedPostImage)} 
+                src={URL.createObjectURL(state.selectedPostImage)} 
                 alt="Post preview" 
                 className="w-full h-auto max-h-60 object-cover"
               />
               <button 
-                onClick={() => setSelectedPostImage(null)}
+                onClick={() => setState(prev => ({ ...prev, selectedPostImage: null }))}
                 className="absolute top-2 right-2 bg-black bg-opacity-50 rounded-full p-1 text-white"
               >
                 &times;
@@ -331,7 +329,7 @@ const ProfilePage = () => {
             
             <Button 
               onClick={handleCreatePost} 
-              disabled={!newPostContent.trim() || isCreatingPost}
+              disabled={!state.newPostContent.trim() || isCreatingPost}
             >
               {isCreatingPost ? (
                 <>
@@ -345,20 +343,19 @@ const ProfilePage = () => {
           </div>
         </div>
         
-        {/* User Posts */}
         <h2 className="text-lg font-semibold mb-3">My Posts</h2>
-        {loading ? (
+        {state.loading ? (
           <div className="flex justify-center my-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
             <p className="ml-2">Loading posts...</p>
           </div>
-        ) : posts.length === 0 ? (
+        ) : state.posts.length === 0 ? (
           <div className="text-center my-8 py-10 bg-gray-50 rounded-lg">
             <p className="text-gray-500">You haven't created any posts yet</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {posts.map((post) => (
+            {state.posts.map((post) => (
               <div key={post.id} className="bg-white p-4 rounded-lg shadow">
                 <div className="mb-3">
                   <p className="text-xs text-gray-500">{formatDate(post.created_at)}</p>

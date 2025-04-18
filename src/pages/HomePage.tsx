@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -8,19 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { Post, Profile } from "@/types/database";
 
-interface Profile {
-  username: string;
-  avatar_url?: string;
-}
-
-interface Post {
-  id: string;
-  user_id: string;
-  content: string;
-  image_url?: string;
-  created_at: string;
-  likes: number;
+interface PostWithUser extends Post {
   username: string;
   avatar_url?: string;
 }
@@ -28,7 +17,7 @@ interface Post {
 const HomePage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<PostWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +30,6 @@ const HomePage = () => {
       setLoading(true);
       setError(null);
       
-      // Get posts from the posts table
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select('*')
@@ -52,7 +40,6 @@ const HomePage = () => {
       if (postsData) {
         const formattedPosts = await Promise.all(
           postsData.map(async (post) => {
-            // Get user profile info
             const { data: profileData } = await supabase
               .from('profiles')
               .select('username, avatar_url')
@@ -80,18 +67,15 @@ const HomePage = () => {
 
   const handleLike = async (postId: string) => {
     try {
-      // Find the post
       const post = posts.find(p => p.id === postId);
       if (!post) return;
       
-      // Optimistically update UI
       setPosts(currentPosts => 
         currentPosts.map(p => 
           p.id === postId ? { ...p, likes: p.likes + 1 } : p
         )
       );
       
-      // Update in database
       const { error } = await supabase
         .from('posts')
         .update({ likes: post.likes + 1 })
@@ -101,7 +85,6 @@ const HomePage = () => {
     } catch (error) {
       console.error('Error liking post:', error);
       toast.error('Failed to like post');
-      // Revert optimistic update
       fetchPosts();
     }
   };
