@@ -3,11 +3,11 @@ import { useState } from "react";
 import { Profile } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadImage } from "@/utils/imageUpload";
+import { ImageUpload } from "@/components/shared/ImageUpload";
 
 interface ProfileEditorProps {
   profile: Profile | null;
@@ -20,20 +20,19 @@ export const ProfileEditor = ({ profile, userEmail, onCancel, onProfileUpdate }:
   const [editedUsername, setEditedUsername] = useState(profile?.username || '');
   const [editedBio, setEditedBio] = useState(profile?.bio || '');
   const [selectedProfileImage, setSelectedProfileImage] = useState<File | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const handleSaveProfile = async () => {
     try {
       if (!profile?.id) return;
       
       setIsUpdating(true);
-      setUploadingImage(true);
       
       let avatarUrl = profile.avatar_url;
       
       if (selectedProfileImage) {
-        const imageUrl = await uploadImage(selectedProfileImage);
+        const imageUrl = await uploadImage(selectedProfileImage, setUploadProgress);
         if (imageUrl) {
           avatarUrl = imageUrl;
         }
@@ -61,37 +60,20 @@ export const ProfileEditor = ({ profile, userEmail, onCancel, onProfileUpdate }:
       toast.error("Failed to update profile");
     } finally {
       setIsUpdating(false);
-      setUploadingImage(false);
     }
   };
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col items-center mb-4">
-        <Avatar className="h-24 w-24 mb-2">
-          <AvatarImage 
-            src={selectedProfileImage ? URL.createObjectURL(selectedProfileImage) : profile?.avatar_url || ''} 
-          />
-          <AvatarFallback>
-            {profile?.username?.charAt(0).toUpperCase() || userEmail?.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        
-        <label className="cursor-pointer">
-          <Input 
-            type="file" 
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files?.[0]) {
-                setSelectedProfileImage(e.target.files[0]);
-              }
-            }}
-          />
-          <Button variant="outline" size="sm" type="button" className="mt-2">
-            Change Photo
-          </Button>
-        </label>
+        <ImageUpload
+          onImageSelect={(file) => setSelectedProfileImage(file)}
+          onImageClear={() => setSelectedProfileImage(null)}
+          previewUrl={selectedProfileImage ? URL.createObjectURL(selectedProfileImage) : profile?.avatar_url}
+          isUploading={isUpdating && !!selectedProfileImage}
+          uploadProgress={uploadProgress}
+          className="w-32 h-32"
+        />
       </div>
       
       <div>

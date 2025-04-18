@@ -2,7 +2,15 @@
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
 
-export const uploadImage = async (file: File): Promise<string | null> => {
+export interface UploadProgress {
+  progress: number;
+  error?: Error;
+}
+
+export const uploadImage = async (
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<string | null> => {
   try {
     if (!file) return null;
 
@@ -12,7 +20,12 @@ export const uploadImage = async (file: File): Promise<string | null> => {
 
     const { data, error } = await supabase.storage
       .from('images')
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        onUploadProgress: (progress) => {
+          const percentage = (progress.loaded / progress.total) * 100;
+          onProgress?.(percentage);
+        }
+      });
 
     if (error) throw error;
 

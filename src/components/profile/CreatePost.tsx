@@ -2,10 +2,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ImageIcon, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadImage } from "@/utils/imageUpload";
+import { ImageUpload } from "@/components/shared/ImageUpload";
 
 interface CreatePostProps {
   userId: string;
@@ -16,6 +17,7 @@ export const CreatePost = ({ userId, onPostCreated }: CreatePostProps) => {
   const [newPostContent, setNewPostContent] = useState("");
   const [selectedPostImage, setSelectedPostImage] = useState<File | null>(null);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const handleCreatePost = async () => {
     try {
@@ -26,7 +28,7 @@ export const CreatePost = ({ userId, onPostCreated }: CreatePostProps) => {
       let imageUrl = null;
       
       if (selectedPostImage) {
-        imageUrl = await uploadImage(selectedPostImage);
+        imageUrl = await uploadImage(selectedPostImage, setUploadProgress);
       }
       
       const newPost = {
@@ -45,6 +47,7 @@ export const CreatePost = ({ userId, onPostCreated }: CreatePostProps) => {
       
       setNewPostContent("");
       setSelectedPostImage(null);
+      setUploadProgress(0);
       onPostCreated();
       toast.success("Post created successfully");
     } catch (error) {
@@ -63,42 +66,19 @@ export const CreatePost = ({ userId, onPostCreated }: CreatePostProps) => {
         value={newPostContent}
         onChange={(e) => setNewPostContent(e.target.value)}
         className="mb-3"
+        disabled={isCreatingPost}
       />
       
-      {selectedPostImage && (
-        <div className="mb-3 relative rounded-md overflow-hidden">
-          <img 
-            src={URL.createObjectURL(selectedPostImage)} 
-            alt="Post preview" 
-            className="w-full h-auto max-h-60 object-cover"
-          />
-          <button 
-            onClick={() => setSelectedPostImage(null)}
-            className="absolute top-2 right-2 bg-black bg-opacity-50 rounded-full p-1 text-white"
-          >
-            &times;
-          </button>
-        </div>
-      )}
+      <ImageUpload
+        onImageSelect={(file) => setSelectedPostImage(file)}
+        onImageClear={() => setSelectedPostImage(null)}
+        previewUrl={selectedPostImage ? URL.createObjectURL(selectedPostImage) : undefined}
+        isUploading={isCreatingPost && !!selectedPostImage}
+        uploadProgress={uploadProgress}
+        className="mb-3"
+      />
       
-      <div className="flex justify-between items-center">
-        <label className="cursor-pointer">
-          <Input 
-            type="file" 
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files?.[0]) {
-                setSelectedPostImage(e.target.files[0]);
-              }
-            }}
-          />
-          <Button variant="outline" size="sm" type="button">
-            <ImageIcon className="mr-2 h-4 w-4" />
-            Add Image
-          </Button>
-        </label>
-        
+      <div className="flex justify-end">
         <Button 
           onClick={handleCreatePost} 
           disabled={!newPostContent.trim() || isCreatingPost}
