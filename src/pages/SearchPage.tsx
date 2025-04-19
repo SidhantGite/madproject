@@ -1,12 +1,11 @@
 
 import Layout from "@/components/Layout";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { searchBirds, Bird, getBirdFilterOptions } from "@/utils/birdSearch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { searchBirds, Bird } from "@/utils/birdSearch";
 
 const SearchPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -14,26 +13,6 @@ const SearchPage = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedBird, setExpandedBird] = useState<string | null>(null);
-  
-  // New state for filters
-  const [seasonFilter, setSeasonFilter] = useState("");
-  const [familyFilter, setFamilyFilter] = useState("");
-  const [habitatFilter, setHabitatFilter] = useState("");
-  
-  // State for filter options
-  const [filterOptions, setFilterOptions] = useState<{
-    families: string[];
-    habitats: string[];
-  }>({ families: [], habitats: [] });
-
-  useEffect(() => {
-    // Fetch filter options when component mounts
-    const fetchFilterOptions = async () => {
-      const options = await getBirdFilterOptions();
-      setFilterOptions(options);
-    };
-    fetchFilterOptions();
-  }, []);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -45,11 +24,7 @@ const SearchPage = () => {
     setError(null);
     
     try {
-      const results = await searchBirds(searchQuery, {
-        season: seasonFilter,
-        family: familyFilter,
-        habitat: habitatFilter
-      });
+      const results = await searchBirds(searchQuery);
       
       setSearchResults(results);
       
@@ -75,19 +50,12 @@ const SearchPage = () => {
     setExpandedBird(prev => prev === birdId ? null : birdId);
   };
 
-  // Reset filters
-  const resetFilters = () => {
-    setSeasonFilter("");
-    setFamilyFilter("");
-    setHabitatFilter("");
-  };
-
   return (
     <Layout>
       <div className="px-4 py-6 pb-20">
         <h1 className="text-2xl font-bold mb-6">Bird Search</h1>
         
-        <div className="flex flex-col gap-4 mb-6">
+        <div className="mb-6">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -113,69 +81,6 @@ const SearchPage = () => {
               )}
             </Button>
           </div>
-          
-          {/* New Filters Section */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Select 
-              value={seasonFilter} 
-              onValueChange={setSeasonFilter}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Season" />
-              </SelectTrigger>
-              <SelectContent>
-                {['Spring', 'Summer', 'Autumn', 'Winter'].map(season => (
-                  <SelectItem key={season} value={season}>
-                    {season}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select 
-              value={familyFilter} 
-              onValueChange={setFamilyFilter}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Family" />
-              </SelectTrigger>
-              <SelectContent>
-                {filterOptions.families.map(family => (
-                  <SelectItem key={family} value={family}>
-                    {family}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select 
-              value={habitatFilter} 
-              onValueChange={setHabitatFilter}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Habitat" />
-              </SelectTrigger>
-              <SelectContent>
-                {filterOptions.habitats.map(habitat => (
-                  <SelectItem key={habitat} value={habitat}>
-                    {habitat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          {(seasonFilter || familyFilter || habitatFilter) && (
-            <div className="flex justify-end">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={resetFilters}
-              >
-                Clear Filters
-              </Button>
-            </div>
-          )}
         </div>
 
         {error && (

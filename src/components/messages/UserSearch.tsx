@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
 interface UserSearchProps {
-  onUserSelect: (userId: string, username: string) => void;
+  onUserSelect: (userId: string, username: string, avatarUrl: string | null) => void;
 }
 
 export const UserSearch = ({ onUserSelect }: UserSearchProps) => {
@@ -18,7 +18,7 @@ export const UserSearch = ({ onUserSelect }: UserSearchProps) => {
     queryFn: async () => {
       if (!searchTerm) return [];
       
-      // Use ILIKE for partial case-insensitive matching instead of full text search
+      // Use ILIKE for partial case-insensitive matching
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, avatar_url')
@@ -55,7 +55,7 @@ export const UserSearch = ({ onUserSelect }: UserSearchProps) => {
           {users?.map((user) => (
             <CommandItem
               key={user.id}
-              onSelect={() => onUserSelect(user.id, user.username)}
+              onSelect={() => onUserSelect(user.id, user.username, user.avatar_url)}
               className="flex items-center gap-2 p-2 cursor-pointer"
             >
               <Avatar className="h-8 w-8">
