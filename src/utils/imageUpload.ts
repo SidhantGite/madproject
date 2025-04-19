@@ -21,8 +21,10 @@ export const uploadImage = async (
     const { data, error } = await supabase.storage
       .from('images')
       .upload(filePath, file, {
-        onUploadProgress: (progress) => {
-          const percentage = (progress.loaded / progress.total) * 100;
+        cacheControl: '3600',
+        upsert: false,
+        onUploadProgress: ({ loaded, total }) => {
+          const percentage = (loaded / total) * 100;
           onProgress?.(percentage);
         }
       });

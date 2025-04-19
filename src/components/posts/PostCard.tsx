@@ -2,6 +2,8 @@
 import { Post } from "@/types/database";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDate } from "@/utils/dateFormatter";
+import { useState } from "react";
+import { Heart } from "lucide-react";
 
 interface PostCardProps {
   post: Post & { username: string; avatar_url?: string };
@@ -9,6 +11,20 @@ interface PostCardProps {
 }
 
 export const PostCard = ({ post, onLike }: PostCardProps) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+
+  const handleLike = () => {
+    if (!isLiked) {
+      setIsLiked(true);
+      onLike(post.id);
+    }
+  };
+
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
   return (
     <div className="bg-white p-4 rounded-lg shadow">
       <div className="flex items-center mb-3">
@@ -29,7 +45,8 @@ export const PostCard = ({ post, onLike }: PostCardProps) => {
           <img 
             src={post.image_url} 
             alt="Post content" 
-            className="w-full h-auto object-cover"
+            className={`w-full h-auto object-cover cursor-pointer ${isExpanded ? 'max-h-none' : 'max-h-[300px]'}`}
+            onClick={toggleExpand}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.onerror = null;
@@ -40,24 +57,13 @@ export const PostCard = ({ post, onLike }: PostCardProps) => {
       )}
       
       <button 
-        className="flex items-center text-sm text-gray-500 hover:text-gray-700"
-        onClick={() => onLike(post.id)}
+        className={`flex items-center text-sm ${isLiked ? 'text-red-500' : 'text-gray-500 hover:text-gray-700'}`}
+        onClick={handleLike}
       >
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          className="h-5 w-5 mr-1" 
-          fill="none" 
-          viewBox="0 0 24 24" 
-          stroke="currentColor"
-        >
-          <path 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth={2} 
-            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
-          />
-        </svg>
-        {post.likes} likes
+        <Heart 
+          className={`h-5 w-5 mr-1 ${isLiked ? 'fill-red-500' : ''}`}
+        />
+        {isLiked ? post.likes + 1 : post.likes} likes
       </button>
     </div>
   );
