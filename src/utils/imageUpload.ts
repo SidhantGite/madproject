@@ -22,11 +22,7 @@ export const uploadImage = async (
       .from('images')
       .upload(filePath, file, {
         cacheControl: '3600',
-        upsert: false,
-        onUploadProgress: ({ loaded, total }) => {
-          const percentage = (loaded / total) * 100;
-          onProgress?.(percentage);
-        }
+        upsert: false
       });
 
     if (error) throw error;

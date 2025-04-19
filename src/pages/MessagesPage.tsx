@@ -1,6 +1,5 @@
-
 import Layout from "@/components/Layout";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,6 +7,7 @@ import { Search, MessageSquare, Loader2, AlertCircle, Send } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { UserSearch } from "@/components/messages/UserSearch";
 
 interface ChatPreview {
   chat_id: string;
@@ -37,6 +37,7 @@ const MessagesPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [showUserSearch, setShowUserSearch] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -225,6 +226,46 @@ const MessagesPage = () => {
     }
   };
 
+  const handleNewChat = async (userId: string, username: string) => {
+    try {
+      // Create a new chat
+      const { data: chatData, error: chatError } = await supabase
+        .from('chats')
+        .insert({})
+        .select()
+        .single();
+
+      if (chatError) throw chatError;
+
+      // Add both users as participants
+      const { error: participantsError } = await supabase
+        .from('chat_participants')
+        .insert([
+          { chat_id: chatData.id, user_id: user?.id },
+          { chat_id: chatData.id, user_id: userId }
+        ]);
+
+      if (participantsError) throw participantsError;
+
+      // Add the new chat to the list
+      setChats(prev => [{
+        chat_id: chatData.id,
+        username: username,
+        avatar_url: null,
+        last_message: "",
+        last_message_time: new Date().toISOString(),
+        user_id: userId
+      }, ...prev]);
+
+      setSelectedChatId(chatData.id);
+      setShowUserSearch(false);
+      toast.success("Chat created successfully");
+    } catch (error) {
+      console.error("Error creating chat:", error);
+      toast.error("Failed to create chat");
+    }
+  };
+
   return (
     <Layout>
       <div className="px-4 py-6 pb-20 h-full">
@@ -234,6 +275,18 @@ const MessagesPage = () => {
           {/* Chat list sidebar */}
           <div className="w-1/3 border-r border-gray-200 overflow-y-auto">
             <div className="p-3">
+              <Button 
+                variant="outline" 
+                className="w-full mb-3"
+                onClick={() => setShowUserSearch(true)}
+              >
+                New Message
+              </Button>
+              {showUserSearch && (
+                <div className="mb-3">
+                  <UserSearch onUserSelect={handleNewChat} />
+                </div>
+              )}
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                 <Input
