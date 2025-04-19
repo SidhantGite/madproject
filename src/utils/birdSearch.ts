@@ -68,32 +68,35 @@ export const searchBirds = async (
 // Function to get unique families and habitats for filtering
 export const getBirdFilterOptions = async () => {
   try {
-    // Fetch unique families
-    const { data: familyData, error: familyError } = await supabase
+    // Fetch all birds first
+    const { data: allBirds, error: fetchError } = await supabase
       .from('birds')
-      .select('family', { count: 'exact' })
-      .filter('family', 'not.is', null)
-      .distinct();
-
-    // Fetch unique habitats
-    const { data: habitatData, error: habitatError } = await supabase
-      .from('birds')
-      .select('habitat', { count: 'exact' })
-      .filter('habitat', 'not.is', null)
-      .distinct();
-
-    if (familyError || habitatError) {
-      console.error("Error fetching filter options:", familyError || habitatError);
+      .select('family, habitat');
+      
+    if (fetchError) {
+      console.error("Error fetching birds:", fetchError);
       return { families: [], habitats: [] };
     }
+    
+    // Extract unique families and habitats manually
+    const families = Array.from(new Set(
+      allBirds
+        .map(bird => bird.family)
+        .filter(family => family !== null && family !== '')
+    ));
+    
+    const habitats = Array.from(new Set(
+      allBirds
+        .map(bird => bird.habitat)
+        .filter(habitat => habitat !== null && habitat !== '')
+    ));
 
     return {
-      families: familyData?.map(f => f.family) || [],
-      habitats: habitatData?.map(h => h.habitat) || []
+      families: families as string[],
+      habitats: habitats as string[]
     };
   } catch (error) {
     console.error("Unexpected error in getting filter options:", error);
     return { families: [], habitats: [] };
   }
 };
-

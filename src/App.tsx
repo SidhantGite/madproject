@@ -13,7 +13,6 @@ import HomePage from "./pages/HomePage";
 import SearchPage from "./pages/SearchPage";
 import MessagesPage from "./pages/MessagesPage";
 import ProfilePage from "./pages/ProfilePage";
-import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
@@ -24,9 +23,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const App = () => {
-  // Handle Capacitor back button for Android
-  useEffect(() => {
+// Create a separate BackButtonHandler component for Capacitor back button
+const BackButtonHandler = () => {
+  // Using React hooks properly within a component
+  React.useEffect(() => {
     const handleBackButton = () => {
       if (window.location.pathname === "/home") {
         // At home screen, ask confirmation to exit
@@ -46,7 +46,11 @@ const App = () => {
       window.removeEventListener("popstate", handleBackButton);
     };
   }, []);
+  
+  return null; // This component doesn't render anything
+};
 
+const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -54,6 +58,8 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            {/* Add the BackButtonHandler here, inside BrowserRouter */}
+            <BackButtonHandler />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
