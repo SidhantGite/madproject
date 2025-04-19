@@ -1,4 +1,3 @@
-
 import Layout from "@/components/Layout";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
@@ -57,7 +56,6 @@ const MessagesPage = () => {
       setLoading(true);
       setError(null);
       
-      // This is a placeholder for actual API call in Phase 3
       setTimeout(() => {
         const mockChats: ChatPreview[] = [
           {
@@ -114,7 +112,6 @@ const MessagesPage = () => {
   };
 
   const fetchMessages = async (chatId: string) => {
-    // This is a placeholder for actual API call in Phase 3
     const mockMessages: Message[] = [
       {
         id: "1",
@@ -156,18 +153,15 @@ const MessagesPage = () => {
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     
-    // Less than a day
     if (diff < 86400000) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
     
-    // Less than a week
     if (diff < 604800000) {
       const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       return days[date.getDay()];
     }
     
-    // Otherwise show the date
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
@@ -177,7 +171,6 @@ const MessagesPage = () => {
 
   const handleChatClick = (chatId: string, userId: string) => {
     setSelectedChatId(chatId);
-    // In Phase 3, this will load the actual chat messages
   };
 
   const handleRetry = () => {
@@ -189,7 +182,6 @@ const MessagesPage = () => {
     
     setSendingMessage(true);
     
-    // This is a placeholder for actual API call in Phase 3
     setTimeout(() => {
       const newMsg: Message = {
         id: `temp-${Date.now()}`,
@@ -203,7 +195,6 @@ const MessagesPage = () => {
       setNewMessage("");
       setSendingMessage(false);
       
-      // Simulate response in demo (would be removed in Phase 3)
       setTimeout(() => {
         const responseMsg: Message = {
           id: `temp-${Date.now() + 1}`,
@@ -229,35 +220,41 @@ const MessagesPage = () => {
 
   const handleNewChat = async (userId: string, username: string) => {
     try {
-      // Create a new chat
       const { data: chatData, error: chatError } = await supabase
         .from('chats')
         .insert({})
         .select()
         .single();
 
-      if (chatError) throw chatError;
+      if (chatError) {
+        console.error("Error creating chat:", chatError);
+        throw chatError;
+      }
 
-      // Add both users as participants
+      const participants = [
+        { chat_id: chatData.id, user_id: user?.id },
+        { chat_id: chatData.id, user_id: userId }
+      ];
+
       const { error: participantsError } = await supabase
         .from('chat_participants')
-        .insert([
-          { chat_id: chatData.id, user_id: user?.id },
-          { chat_id: chatData.id, user_id: userId }
-        ]);
+        .insert(participants);
 
-      if (participantsError) throw participantsError;
+      if (participantsError) {
+        console.error("Error adding chat participants:", participantsError);
+        throw participantsError;
+      }
 
-      // Add the new chat to the list
-      setChats(prev => [{
+      const newChat: ChatPreview = {
         chat_id: chatData.id,
         username: username,
         avatar_url: null,
         last_message: "",
         last_message_time: new Date().toISOString(),
         user_id: userId
-      }, ...prev]);
-
+      };
+      
+      setChats(prev => [newChat, ...prev]);
       setSelectedChatId(chatData.id);
       setShowUserSearch(false);
       toast.success("Chat created successfully");
@@ -273,7 +270,6 @@ const MessagesPage = () => {
         <h1 className="text-2xl font-bold mb-6">Messages</h1>
         
         <div className="flex h-[calc(100vh-200px)] bg-white rounded-lg shadow overflow-hidden">
-          {/* Chat list sidebar */}
           <div className="w-1/3 border-r border-gray-200 overflow-y-auto">
             <div className="p-3">
               <Button 
@@ -349,11 +345,9 @@ const MessagesPage = () => {
             </div>
           </div>
           
-          {/* Chat message area */}
           <div className="flex-1 flex flex-col">
             {selectedChatId ? (
               <>
-                {/* Chat header */}
                 <div className="p-4 border-b border-gray-200">
                   <div className="flex items-center">
                     <Avatar className="mr-3 h-8 w-8">
@@ -371,7 +365,6 @@ const MessagesPage = () => {
                   </div>
                 </div>
                 
-                {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   {messages.map((message) => (
                     <div 
@@ -394,7 +387,6 @@ const MessagesPage = () => {
                   ))}
                 </div>
                 
-                {/* Message input */}
                 <div className="p-4 border-t border-gray-200">
                   <div className="flex items-end">
                     <Input

@@ -18,14 +18,18 @@ export const UserSearch = ({ onUserSelect }: UserSearchProps) => {
     queryFn: async () => {
       if (!searchTerm) return [];
       
+      // Use ILIKE for partial case-insensitive matching instead of full text search
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, avatar_url')
-        .textSearch('username_search', searchTerm)
+        .ilike('username', `%${searchTerm}%`)
         .limit(5);
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error("Error searching users:", error);
+        throw error;
+      }
+      return data || [];
     },
     enabled: searchTerm.length > 0
   });
