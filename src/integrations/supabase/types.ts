@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      birds: {
+        Row: {
+          common_name: string
+          created_at: string | null
+          description: string | null
+          diet: string | null
+          family: string | null
+          habitat: string | null
+          id: string
+          image_url: string | null
+          migration_info: string | null
+          scientific_name: string
+          seasonality: string[] | null
+        }
+        Insert: {
+          common_name: string
+          created_at?: string | null
+          description?: string | null
+          diet?: string | null
+          family?: string | null
+          habitat?: string | null
+          id?: string
+          image_url?: string | null
+          migration_info?: string | null
+          scientific_name: string
+          seasonality?: string[] | null
+        }
+        Update: {
+          common_name?: string
+          created_at?: string | null
+          description?: string | null
+          diet?: string | null
+          family?: string | null
+          habitat?: string | null
+          id?: string
+          image_url?: string | null
+          migration_info?: string | null
+          scientific_name?: string
+          seasonality?: string[] | null
+        }
+        Relationships: []
+      }
       chat_participants: {
         Row: {
           chat_id: string
@@ -53,6 +95,7 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
+          read_at: string | null
           sender_id: string | null
         }
         Insert: {
@@ -60,6 +103,7 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: string
+          read_at?: string | null
           sender_id?: string | null
         }
         Update: {
@@ -67,6 +111,7 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: string
+          read_at?: string | null
           sender_id?: string | null
         }
         Relationships: [
@@ -112,27 +157,36 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          ban_reason: string | null
           bio: string | null
           created_at: string | null
           id: string
+          is_banned: boolean | null
+          is_moderator: boolean | null
           updated_at: string | null
           username: string
           username_search: unknown | null
         }
         Insert: {
           avatar_url?: string | null
+          ban_reason?: string | null
           bio?: string | null
           created_at?: string | null
           id: string
+          is_banned?: boolean | null
+          is_moderator?: boolean | null
           updated_at?: string | null
           username: string
           username_search?: unknown | null
         }
         Update: {
           avatar_url?: string | null
+          ban_reason?: string | null
           bio?: string | null
           created_at?: string | null
           id?: string
+          is_banned?: boolean | null
+          is_moderator?: boolean | null
           updated_at?: string | null
           username?: string
           username_search?: unknown | null
