@@ -17,7 +17,7 @@ export interface Message {
   sender_avatar?: string | null;
 }
 
-// Add simple mock user data
+// Add more mock users
 export const MOCK_USERS = [
   {
     id: "1",
@@ -42,6 +42,21 @@ export const MOCK_USERS = [
   {
     id: "5",
     username: "eagleseye",
+    avatar_url: null
+  },
+  {
+    id: "6",
+    username: "birdspotter",
+    avatar_url: null
+  },
+  {
+    id: "7",
+    username: "featherfriend",
+    avatar_url: null
+  },
+  {
+    id: "8",
+    username: "wingwatcher",
     avatar_url: null
   }
 ];

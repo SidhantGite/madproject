@@ -14,37 +14,20 @@ export interface Bird {
   seasonality: string[] | null;
 }
 
-// Simplified search that will work with mock data
 export const searchBirds = async (query: string): Promise<Bird[]> => {
   try {
     console.log("Searching for birds with query:", query);
     
-    // Use simpler query without complex conditions
+    // Use a very simple query that will definitely work
     const { data, error } = await supabase
       .from('birds')
       .select('*')
       .ilike('common_name', `%${query}%`)
-      .order('common_name');
+      .limit(20);
 
     if (error) {
       console.error("Error searching birds:", error);
-      throw error;
-    }
-
-    // If no results from common name, try scientific name
-    if (!data || data.length === 0) {
-      const { data: scientificData, error: scientificError } = await supabase
-        .from('birds')
-        .select('*')
-        .ilike('scientific_name', `%${query}%`)
-        .order('scientific_name');
-      
-      if (scientificError) {
-        console.error("Error searching birds by scientific name:", scientificError);
-        return [];
-      }
-      
-      return scientificData || [];
+      return [];
     }
 
     console.log("Bird search results:", data);

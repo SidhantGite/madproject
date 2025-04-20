@@ -10,7 +10,6 @@ interface UserSearchProps {
 
 export const UserSearch = ({ onUserSelect }: UserSearchProps) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   // Simple filtering of mock users based on search term
   const filteredUsers = MOCK_USERS.filter(user => 
@@ -25,15 +24,7 @@ export const UserSearch = ({ onUserSelect }: UserSearchProps) => {
         onValueChange={setSearchTerm}
       />
       <CommandList>
-        <CommandEmpty>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-6">
-              <p>Loading users...</p>
-            </div>
-          ) : (
-            "No users found."
-          )}
-        </CommandEmpty>
+        <CommandEmpty>No users found.</CommandEmpty>
         <CommandGroup>
           {filteredUsers.map((user) => (
             <CommandItem
