@@ -3,7 +3,7 @@ import Layout from "@/components/Layout";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2 } from "lucide-react";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
 import { searchBirds, Bird } from "@/utils/birdSearch";
 
@@ -11,7 +11,6 @@ const SearchPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Bird[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [expandedBird, setExpandedBird] = useState<string | null>(null);
 
   const handleSearch = async () => {
@@ -21,20 +20,23 @@ const SearchPage = () => {
     }
 
     setIsSearching(true);
-    setError(null);
     
     try {
+      // Make a clear console log to help with debugging
+      console.log("Starting bird search with query:", searchQuery);
       const results = await searchBirds(searchQuery);
+      console.log("Search results:", results);
       
       setSearchResults(results);
       
       if (results.length === 0) {
         toast.info("No birds found matching your search");
+      } else {
+        toast.success(`Found ${results.length} birds`);
       }
     } catch (error) {
-      setError("Error performing search. Please try again.");
-      toast.error("Error performing search");
       console.error("Search error:", error);
+      toast.error("Error performing search");
     } finally {
       setIsSearching(false);
     }
@@ -71,23 +73,10 @@ const SearchPage = () => {
               onClick={handleSearch}
               disabled={isSearching}
             >
-              {isSearching ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Searching...
-                </>
-              ) : (
-                'Search'
-              )}
+              {isSearching ? 'Searching...' : 'Search'}
             </Button>
           </div>
         </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6">
-            <p>{error}</p>
-          </div>
-        )}
 
         <div className="space-y-4">
           {searchResults.map((bird) => (
