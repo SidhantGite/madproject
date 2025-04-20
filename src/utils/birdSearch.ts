@@ -16,11 +16,13 @@ export interface Bird {
 
 export const searchBirds = async (query: string): Promise<Bird[]> => {
   try {
-    // Base query to fetch birds with case-insensitive partial match
+    console.log("Searching for birds with query:", query);
+    
+    // Basic search with simplified query
     const { data, error } = await supabase
       .from('birds')
       .select('*')
-      .ilike('common_name', `%${query}%`)
+      .or(`common_name.ilike.%${query}%,scientific_name.ilike.%${query}%`)
       .order('common_name');
 
     if (error) {
@@ -28,23 +30,8 @@ export const searchBirds = async (query: string): Promise<Bird[]> => {
       return [];
     }
 
-    // If no results found with common name, try searching in other fields
-    if (!data || data.length === 0) {
-      const { data: extendedData, error: extendedError } = await supabase
-        .from('birds')
-        .select('*')
-        .or(`scientific_name.ilike.%${query}%,description.ilike.%${query}%,habitat.ilike.%${query}%,family.ilike.%${query}%`)
-        .order('common_name');
-      
-      if (extendedError) {
-        console.error("Error in extended search:", extendedError);
-        return [];
-      }
-      
-      return extendedData || [];
-    }
-
-    return data;
+    console.log("Bird search results:", data);
+    return data || [];
   } catch (error) {
     console.error("Unexpected error in bird search:", error);
     return [];
