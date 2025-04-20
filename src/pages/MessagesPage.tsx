@@ -1,48 +1,26 @@
-import Layout from "@/components/Layout";
 import { useState, useEffect } from "react";
+import Layout from "@/components/Layout";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Search, MessageSquare, Loader2, AlertCircle, Send } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Search, MessageSquare, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { UserSearch } from "@/components/messages/UserSearch";
-
-interface Profile {
-  id: string;
-  username: string;
-  avatar_url: string | null;
-}
-
-interface ChatPreview {
-  chat_id: string;
-  username: string;
-  avatar_url: string | null;
-  last_message: string;
-  last_message_time: string;
-  user_id: string;
-}
-
-interface Message {
-  id: string;
-  sender_id: string;
-  content: string;
-  timestamp: string;
-  sender_name: string;
-  sender_avatar?: string | null;
-}
+import { ChatPreview } from "@/components/messages/ChatPreview";
+import { MessageList } from "@/components/messages/MessageList";
+import { MessageInput } from "@/components/messages/MessageInput";
+import { ChatHeader } from "@/components/messages/ChatHeader";
+import type { ChatPreview as ChatPreviewType, Message } from "@/types/messages";
 
 const MessagesPage = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [chats, setChats] = useState<ChatPreview[]>([]);
+  const [chats, setChats] = useState<ChatPreviewType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [sendingMessage, setSendingMessage] = useState(false);
   const [showAllUsers, setShowAllUsers] = useState(false);
 
   useEffect(() => {
@@ -204,17 +182,15 @@ const MessagesPage = () => {
     fetchChats();
   };
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedChatId || !user) return;
-    
-    setSendingMessage(true);
+  const sendMessage = async (content: string) => {
+    if (!selectedChatId || !user) return;
     
     try {
       const { data, error } = await supabase
         .from('messages')
         .insert({
           chat_id: selectedChatId,
-          content: newMessage.trim(),
+          content: content,
           sender_id: user.id
         })
         .select();
@@ -233,20 +209,19 @@ const MessagesPage = () => {
         const newMsg: Message = {
           id: data[0].id,
           sender_id: user.id,
-          content: newMessage.trim(),
+          content: content,
           timestamp: new Date().toISOString(),
           sender_name: profileData?.username || "You",
           sender_avatar: profileData?.avatar_url
         };
         
         setMessages(prev => [...prev, newMsg]);
-        setNewMessage("");
         
         setChats(prev => prev.map(chat => {
           if (chat.chat_id === selectedChatId) {
             return {
               ...chat,
-              last_message: newMessage.trim(),
+              last_message: content,
               last_message_time: new Date().toISOString()
             };
           }
@@ -256,79 +231,6 @@ const MessagesPage = () => {
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Failed to send message");
-    } finally {
-      setSendingMessage(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  const createNewChat = async (userId: string, username: string, avatarUrl: string | null) => {
-    try {
-      const { data: existingChats } = await supabase
-        .from('chat_participants')
-        .select('chat_id')
-        .eq('user_id', user?.id);
-        
-      if (existingChats) {
-        for (const chat of existingChats) {
-          const { data: participants } = await supabase
-            .from('chat_participants')
-            .select('user_id')
-            .eq('chat_id', chat.chat_id);
-            
-          if (participants && participants.some(p => p.user_id === userId)) {
-            setSelectedChatId(chat.chat_id);
-            setShowAllUsers(false);
-            return;
-          }
-        }
-      }
-      
-      const { data: chatData, error: chatError } = await supabase
-        .from('chats')
-        .insert({})
-        .select()
-        .single();
-
-      if (chatError) {
-        throw chatError;
-      }
-
-      const participants = [
-        { chat_id: chatData.id, user_id: user?.id },
-        { chat_id: chatData.id, user_id: userId }
-      ];
-
-      const { error: participantsError } = await supabase
-        .from('chat_participants')
-        .insert(participants);
-
-      if (participantsError) {
-        throw participantsError;
-      }
-
-      const newChat: ChatPreview = {
-        chat_id: chatData.id,
-        username: username,
-        avatar_url: avatarUrl,
-        last_message: "No messages yet",
-        last_message_time: chatData.created_at,
-        user_id: userId
-      };
-      
-      setChats(prev => [newChat, ...prev]);
-      setSelectedChatId(chatData.id);
-      setShowAllUsers(false);
-      toast.success("Chat created successfully");
-    } catch (error) {
-      console.error("Error creating chat:", error);
-      toast.error("Failed to create chat");
     }
   };
 
@@ -359,7 +261,9 @@ const MessagesPage = () => {
             </div>
             
             {showAllUsers ? (
-              <UserSearch onUserSelect={createNewChat} />
+              <UserSearch onUserSelect={(userId, username, avatarUrl) => {
+                createNewChat(userId, username, avatarUrl);
+              }} />
             ) : (
               loading ? (
                 <div className="flex justify-center items-center my-8">
@@ -381,25 +285,12 @@ const MessagesPage = () => {
               ) : (
                 <div className="space-y-1">
                   {filteredChats.map((chat) => (
-                    <div 
+                    <ChatPreview
                       key={chat.chat_id}
-                      className={`flex items-center p-3 cursor-pointer hover:bg-gray-50 ${
-                        selectedChatId === chat.chat_id ? 'bg-gray-100' : ''
-                      }`}
+                      chat={chat}
+                      isSelected={selectedChatId === chat.chat_id}
                       onClick={() => handleChatClick(chat.chat_id)}
-                    >
-                      <Avatar className="mr-3 h-12 w-12">
-                        <AvatarImage src={chat.avatar_url || ''} alt={chat.username} />
-                        <AvatarFallback>{chat.username.charAt(0).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex justify-between">
-                          <h3 className="font-medium">{chat.username}</h3>
-                          <span className="text-xs text-gray-500">{formatTime(chat.last_message_time)}</span>
-                        </div>
-                        <p className="text-sm text-gray-600 truncate">{chat.last_message}</p>
-                      </div>
-                    </div>
+                    />
                   ))}
                 </div>
               )
@@ -409,76 +300,12 @@ const MessagesPage = () => {
           <div className="flex-1 flex flex-col">
             {selectedChatId ? (
               <>
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex items-center">
-                    <Avatar className="mr-3 h-8 w-8">
-                      <AvatarImage 
-                        src={chats.find(c => c.chat_id === selectedChatId)?.avatar_url || ''} 
-                        alt={chats.find(c => c.chat_id === selectedChatId)?.username || ''} 
-                      />
-                      <AvatarFallback>
-                        {(chats.find(c => c.chat_id === selectedChatId)?.username || '').charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <h2 className="font-medium">
-                      {chats.find(c => c.chat_id === selectedChatId)?.username || 'Chat'}
-                    </h2>
-                  </div>
-                </div>
-                
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <MessageSquare className="h-12 w-12 text-gray-300 mb-2" />
-                      <p className="text-gray-500">No messages yet</p>
-                      <p className="text-sm text-gray-400">Send a message to start the conversation</p>
-                    </div>
-                  ) : (
-                    messages.map((message) => (
-                      <div 
-                        key={message.id}
-                        className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div 
-                          className={`max-w-[70%] p-3 rounded-lg ${
-                            message.sender_id === user?.id 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          <p>{message.content}</p>
-                          <div className="text-xs mt-1 opacity-70">
-                            {formatTime(message.timestamp)}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-                
-                <div className="p-4 border-t border-gray-200">
-                  <div className="flex items-end">
-                    <Input
-                      placeholder="Type your message..."
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      disabled={sendingMessage}
-                      className="flex-1 mr-2"
-                    />
-                    <Button 
-                      size="icon" 
-                      onClick={sendMessage}
-                      disabled={!newMessage.trim() || sendingMessage}
-                    >
-                      {sendingMessage ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
+                <ChatHeader 
+                  username={chats.find(c => c.chat_id === selectedChatId)?.username || 'Chat'}
+                  avatarUrl={chats.find(c => c.chat_id === selectedChatId)?.avatar_url}
+                />
+                <MessageList messages={messages} currentUserId={user?.id} />
+                <MessageInput onSendMessage={sendMessage} />
               </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
