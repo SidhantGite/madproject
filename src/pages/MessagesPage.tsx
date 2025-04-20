@@ -1,4 +1,3 @@
-
 import Layout from "@/components/Layout";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
@@ -8,6 +7,7 @@ import { Search, MessageSquare, Loader2, AlertCircle, Send } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { UserSearch } from "@/components/messages/UserSearch";
 
 interface Profile {
   id: string;
@@ -30,16 +30,14 @@ interface Message {
   content: string;
   timestamp: string;
   sender_name: string;
-  sender_avatar?: string;
+  sender_avatar?: string | null;
 }
 
 const MessagesPage = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [chats, setChats] = useState<ChatPreview[]>([]);
-  const [appUsers, setAppUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingUsers, setLoadingUsers] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -50,7 +48,6 @@ const MessagesPage = () => {
   useEffect(() => {
     if (user) {
       fetchChats();
-      fetchAllUsers();
     }
   }, [user]);
 
@@ -65,41 +62,70 @@ const MessagesPage = () => {
       setLoading(true);
       setError(null);
       
-      const { data, error } = await supabase
+      const { data: participantData, error: participantError } = await supabase
         .from('chat_participants')
-        .select(`
-          chat_id,
-          chats!inner(*),
-          profiles!inner(id, username, avatar_url)
-        `)
+        .select('chat_id')
         .eq('user_id', user?.id);
       
-      if (error) {
-        throw error;
+      if (participantError) {
+        throw participantError;
       }
       
-      if (data) {
-        const chatPreviews = await Promise.all(data.map(async (item) => {
-          // Get the last message for each chat
+      if (!participantData || participantData.length === 0) {
+        setChats([]);
+        setLoading(false);
+        return;
+      }
+      
+      const chatPreviews: ChatPreview[] = [];
+      
+      for (const item of participantData) {
+        const { data: otherParticipants, error: otherParticipantsError } = await supabase
+          .from('chat_participants')
+          .select('user_id')
+          .eq('chat_id', item.chat_id)
+          .neq('user_id', user?.id);
+          
+        if (otherParticipantsError) {
+          console.error("Error fetching other participants:", otherParticipantsError);
+          continue;
+        }
+        
+        if (!otherParticipants || otherParticipants.length === 0) continue;
+          
+        for (const otherUser of otherParticipants) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('id, username, avatar_url')
+            .eq('id', otherUser.user_id)
+            .single();
+            
+          if (profileError) {
+            console.error("Error fetching profile:", profileError);
+            continue;
+          }
+          
+          if (!profileData) continue;
+          
           const { data: messageData } = await supabase
             .from('messages')
-            .select('content, created_at, sender_id')
+            .select('content, created_at')
             .eq('chat_id', item.chat_id)
             .order('created_at', { ascending: false })
             .limit(1);
           
-          return {
+          chatPreviews.push({
             chat_id: item.chat_id,
-            username: item.profiles.username,
-            avatar_url: item.profiles.avatar_url,
+            username: profileData.username,
+            avatar_url: profileData.avatar_url,
             last_message: messageData && messageData[0] ? messageData[0].content : "No messages yet",
-            last_message_time: messageData && messageData[0] ? messageData[0].created_at : item.chats.created_at,
-            user_id: item.profiles.id
-          };
-        }));
-        
-        setChats(chatPreviews);
+            last_message_time: messageData && messageData[0] ? messageData[0].created_at : new Date().toISOString(),
+            user_id: profileData.id
+          });
+        }
       }
+      
+      setChats(chatPreviews);
     } catch (error) {
       console.error("Error fetching chats:", error);
       setError("Failed to load messages");
@@ -109,40 +135,11 @@ const MessagesPage = () => {
     }
   };
 
-  const fetchAllUsers = async () => {
-    try {
-      setLoadingUsers(true);
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .neq('id', user?.id);
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (data) {
-        setAppUsers(data);
-      }
-    } catch (error) {
-      console.error("Error fetching users:", error);
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
   const fetchMessages = async (chatId: string) => {
     try {
       const { data, error } = await supabase
         .from('messages')
-        .select(`
-          id,
-          content,
-          created_at,
-          sender_id,
-          profiles(username, avatar_url)
-        `)
+        .select('id, content, created_at, sender_id')
         .eq('chat_id', chatId)
         .order('created_at', { ascending: true });
       
@@ -151,14 +148,24 @@ const MessagesPage = () => {
       }
       
       if (data) {
-        const formattedMessages: Message[] = data.map(msg => ({
-          id: msg.id,
-          sender_id: msg.sender_id,
-          content: msg.content,
-          timestamp: msg.created_at,
-          sender_name: msg.profiles?.username || "Unknown",
-          sender_avatar: msg.profiles?.avatar_url
-        }));
+        const formattedMessages: Message[] = [];
+        
+        for (const msg of data) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('username, avatar_url')
+            .eq('id', msg.sender_id)
+            .single();
+          
+          formattedMessages.push({
+            id: msg.id,
+            sender_id: msg.sender_id,
+            content: msg.content,
+            timestamp: msg.created_at,
+            sender_name: profileData?.username || "Unknown",
+            sender_avatar: profileData?.avatar_url
+          });
+        }
         
         setMessages(formattedMessages);
       }
@@ -189,11 +196,7 @@ const MessagesPage = () => {
     chat.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredUsers = appUsers.filter(user =>
-    user.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleChatClick = (chatId: string, userId: string) => {
+  const handleChatClick = (chatId: string) => {
     setSelectedChatId(chatId);
   };
 
@@ -211,7 +214,6 @@ const MessagesPage = () => {
         .from('messages')
         .insert({
           chat_id: selectedChatId,
-          user_id: user.id,
           content: newMessage.trim(),
           sender_id: user.id
         })
@@ -221,7 +223,6 @@ const MessagesPage = () => {
         throw error;
       }
       
-      // Optimistically update UI
       const { data: profileData } = await supabase
         .from('profiles')
         .select('username, avatar_url')
@@ -235,13 +236,12 @@ const MessagesPage = () => {
           content: newMessage.trim(),
           timestamp: new Date().toISOString(),
           sender_name: profileData?.username || "You",
-          sender_avatar: profileData?.avatar_url || undefined
+          sender_avatar: profileData?.avatar_url
         };
         
         setMessages(prev => [...prev, newMsg]);
         setNewMessage("");
         
-        // Update last message in chat preview
         setChats(prev => prev.map(chat => {
           if (chat.chat_id === selectedChatId) {
             return {
@@ -270,7 +270,6 @@ const MessagesPage = () => {
 
   const createNewChat = async (userId: string, username: string, avatarUrl: string | null) => {
     try {
-      // Check if chat already exists
       const { data: existingChats } = await supabase
         .from('chat_participants')
         .select('chat_id')
@@ -284,14 +283,13 @@ const MessagesPage = () => {
             .eq('chat_id', chat.chat_id);
             
           if (participants && participants.some(p => p.user_id === userId)) {
-            // Chat already exists, just open it
             setSelectedChatId(chat.chat_id);
+            setShowAllUsers(false);
             return;
           }
         }
       }
       
-      // Create new chat
       const { data: chatData, error: chatError } = await supabase
         .from('chats')
         .insert({})
@@ -361,37 +359,7 @@ const MessagesPage = () => {
             </div>
             
             {showAllUsers ? (
-              loadingUsers ? (
-                <div className="flex justify-center items-center my-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
-                  <p>Loading users...</p>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {filteredUsers.length === 0 ? (
-                    <div className="text-center my-8 py-10 bg-gray-50">
-                      <p className="text-gray-500">No users found</p>
-                    </div>
-                  ) : (
-                    filteredUsers.map((appUser) => (
-                      <div 
-                        key={appUser.id}
-                        className="flex items-center p-3 cursor-pointer hover:bg-gray-50"
-                        onClick={() => createNewChat(appUser.id, appUser.username, appUser.avatar_url)}
-                      >
-                        <Avatar className="mr-3 h-12 w-12">
-                          <AvatarImage src={appUser.avatar_url || ''} alt={appUser.username} />
-                          <AvatarFallback>{appUser.username.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <h3 className="font-medium">{appUser.username}</h3>
-                          <p className="text-sm text-gray-600">Start a conversation</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )
+              <UserSearch onUserSelect={createNewChat} />
             ) : (
               loading ? (
                 <div className="flex justify-center items-center my-8">
@@ -408,7 +376,7 @@ const MessagesPage = () => {
                 <div className="text-center my-8 py-10 bg-gray-50">
                   <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-2" />
                   <p className="text-gray-500">No messages found</p>
-                  {searchTerm && <p className="text-gray-400 mt-1">Try a different search term</p>}
+                  <p className="text-gray-400 mt-1">Click "New Message" to start a conversation</p>
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -418,7 +386,7 @@ const MessagesPage = () => {
                       className={`flex items-center p-3 cursor-pointer hover:bg-gray-50 ${
                         selectedChatId === chat.chat_id ? 'bg-gray-100' : ''
                       }`}
-                      onClick={() => handleChatClick(chat.chat_id, chat.user_id)}
+                      onClick={() => handleChatClick(chat.chat_id)}
                     >
                       <Avatar className="mr-3 h-12 w-12">
                         <AvatarImage src={chat.avatar_url || ''} alt={chat.username} />

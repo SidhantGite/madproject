@@ -16,22 +16,26 @@ export const UserSearch = ({ onUserSelect }: UserSearchProps) => {
   const { data: users, isLoading } = useQuery({
     queryKey: ['searchUsers', searchTerm],
     queryFn: async () => {
-      if (!searchTerm) return [];
-      
-      // Use ILIKE for partial case-insensitive matching
+      // Get all users except the current user, regardless of search term
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url')
-        .ilike('username', `%${searchTerm}%`)
-        .limit(5);
+        .select('id, username, avatar_url');
 
       if (error) {
-        console.error("Error searching users:", error);
+        console.error("Error fetching users:", error);
         throw error;
       }
+
+      // Filter by search term client-side if a search term is provided
+      if (searchTerm) {
+        return data.filter(user => 
+          user.username.toLowerCase().includes(searchTerm.toLowerCase())
+        ) || [];
+      }
+      
       return data || [];
     },
-    enabled: searchTerm.length > 0
+    initialData: []
   });
 
   return (
