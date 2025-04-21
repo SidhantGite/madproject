@@ -18,11 +18,15 @@ export const searchBirds = async (query: string): Promise<Bird[]> => {
   try {
     console.log("Searching for birds with query:", query);
     
-    // Use a very simple query that will definitely work
+    if (!query || query.trim() === '') {
+      return [];
+    }
+    
+    // Search in both common_name and scientific_name for better results
     const { data, error } = await supabase
       .from('birds')
       .select('*')
-      .ilike('common_name', `%${query}%`)
+      .or(`common_name.ilike.%${query}%,scientific_name.ilike.%${query}%`)
       .limit(20);
 
     if (error) {

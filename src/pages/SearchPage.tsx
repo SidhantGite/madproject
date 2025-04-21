@@ -1,9 +1,9 @@
 
 import Layout from "@/components/Layout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { searchBirds, Bird } from "@/utils/birdSearch";
 
@@ -52,6 +52,11 @@ const SearchPage = () => {
     setExpandedBird(prev => prev === birdId ? null : birdId);
   };
 
+  // Debug effect to verify we're getting results
+  useEffect(() => {
+    console.log("Current search results:", searchResults);
+  }, [searchResults]);
+
   return (
     <Layout>
       <div className="px-4 py-6 pb-20">
@@ -73,88 +78,106 @@ const SearchPage = () => {
               onClick={handleSearch}
               disabled={isSearching}
             >
-              {isSearching ? 'Searching...' : 'Search'}
+              {isSearching ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Searching...
+                </span>
+              ) : 'Search'}
             </Button>
           </div>
         </div>
 
-        <div className="space-y-4">
-          {searchResults.map((bird) => (
-            <div 
-              key={bird.id} 
-              className="bg-white rounded-lg shadow p-4 cursor-pointer"
-              onClick={() => toggleExpand(bird.id)}
-            >
-              <div className="flex flex-col md:flex-row md:items-start gap-4">
-                {bird.image_url && (
-                  <div className="md:w-1/3">
-                    <img 
-                      src={bird.image_url} 
-                      alt={bird.common_name} 
-                      className="rounded-md w-full h-48 object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.onerror = null;
-                        target.src = 'https://via.placeholder.com/400x300?text=Bird+Image+Not+Available';
-                      }}
-                    />
-                  </div>
-                )}
-                
-                <div className={`${bird.image_url ? 'md:w-2/3' : 'w-full'}`}>
-                  <h3 className="text-lg font-medium mb-1">{bird.common_name}</h3>
-                  <p className="text-sm italic text-gray-600 mb-3">{bird.scientific_name}</p>
-                  
-                  {expandedBird === bird.id && bird.description && <p className="mb-3">{bird.description}</p>}
-                  
-                  {expandedBird === bird.id && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <h4 className="font-medium text-sm">Habitat</h4>
-                        <p className="text-sm text-gray-600">{bird.habitat || 'Not specified'}</p>
+        {isSearching ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {searchResults.length > 0 ? (
+              searchResults.map((bird) => (
+                <div 
+                  key={bird.id} 
+                  className="bg-white rounded-lg shadow p-4 cursor-pointer"
+                  onClick={() => toggleExpand(bird.id)}
+                >
+                  <div className="flex flex-col md:flex-row md:items-start gap-4">
+                    {bird.image_url && (
+                      <div className="md:w-1/3">
+                        <img 
+                          src={bird.image_url} 
+                          alt={bird.common_name} 
+                          className="rounded-md w-full h-48 object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.onerror = null;
+                            target.src = 'https://via.placeholder.com/400x300?text=Bird+Image+Not+Available';
+                          }}
+                        />
                       </div>
+                    )}
+                    
+                    <div className={`${bird.image_url ? 'md:w-2/3' : 'w-full'}`}>
+                      <h3 className="text-lg font-medium mb-1">{bird.common_name}</h3>
+                      <p className="text-sm italic text-gray-600 mb-3">{bird.scientific_name}</p>
                       
-                      <div>
-                        <h4 className="font-medium text-sm">Diet</h4>
-                        <p className="text-sm text-gray-600">{bird.diet || 'Not specified'}</p>
-                      </div>
+                      {expandedBird === bird.id && bird.description && <p className="mb-3">{bird.description}</p>}
                       
-                      <div>
-                        <h4 className="font-medium text-sm">Family</h4>
-                        <p className="text-sm text-gray-600">{bird.family || 'Not specified'}</p>
-                      </div>
-                      
-                      {bird.seasonality && (
-                        <div>
-                          <h4 className="font-medium text-sm">Seasonality</h4>
-                          <p className="text-sm text-gray-600">{bird.seasonality.join(', ')}</p>
+                      {expandedBird === bird.id && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <h4 className="font-medium text-sm">Habitat</h4>
+                            <p className="text-sm text-gray-600">{bird.habitat || 'Not specified'}</p>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-medium text-sm">Diet</h4>
+                            <p className="text-sm text-gray-600">{bird.diet || 'Not specified'}</p>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-medium text-sm">Family</h4>
+                            <p className="text-sm text-gray-600">{bird.family || 'Not specified'}</p>
+                          </div>
+                          
+                          {bird.seasonality && (
+                            <div>
+                              <h4 className="font-medium text-sm">Seasonality</h4>
+                              <p className="text-sm text-gray-600">{bird.seasonality.join(', ')}</p>
+                            </div>
+                          )}
+                          
+                          {bird.migration_info && (
+                            <div>
+                              <h4 className="font-medium text-sm">Migration</h4>
+                              <p className="text-sm text-gray-600">{bird.migration_info}</p>
+                            </div>
+                          )}
                         </div>
                       )}
                       
-                      {bird.migration_info && (
-                        <div>
-                          <h4 className="font-medium text-sm">Migration</h4>
-                          <p className="text-sm text-gray-600">{bird.migration_info}</p>
-                        </div>
-                      )}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleExpand(bird.id);
+                        }}
+                      >
+                        {expandedBird === bird.id ? 'Show Less' : 'Show More'}
+                      </Button>
                     </div>
-                  )}
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleExpand(bird.id);
-                    }}
-                  >
-                    {expandedBird === bird.id ? 'Show Less' : 'Show More'}
-                  </Button>
+                  </div>
                 </div>
+              ))
+            ) : searchQuery.trim() !== "" && (
+              <div className="py-8 text-center text-gray-500">
+                <p>No birds found matching "{searchQuery}"</p>
+                <p className="text-sm mt-2">Try a different search term</p>
               </div>
-            </div>
-          ))}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </Layout>
   );
