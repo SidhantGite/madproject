@@ -1,6 +1,6 @@
 
 import Layout from "@/components/Layout";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2 } from "lucide-react";
@@ -51,11 +51,6 @@ const SearchPage = () => {
   const toggleExpand = (birdId: string) => {
     setExpandedBird(prev => prev === birdId ? null : birdId);
   };
-
-  // Debug effect to verify we're getting results
-  useEffect(() => {
-    console.log("Current search results:", searchResults);
-  }, [searchResults]);
 
   return (
     <Layout>
