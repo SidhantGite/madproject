@@ -41,22 +41,18 @@ Before you start, make sure you have the following installed:
 ### 1. Clone the Repository
 
 Start by cloning the repository to your local machine:
-```bash
+
 git clone https://github.com/yourusername/birdconnect.git
 cd birdconnect
+
 2. Install Dependencies
 Using Yarn:
 
-bash
-Copy
-Edit
 yarn install
 Or using npm:
 
-bash
-Copy
-Edit
 npm install
+
 3. Set Up Supabase
 Create a Supabase Account:
 
@@ -77,15 +73,9 @@ Now, you can run the app locally:
 
 Using Yarn:
 
-bash
-Copy
-Edit
 yarn dev
 Or using npm:
 
-bash
-Copy
-Edit
 npm run dev
 This will start the development server. You can open the app on your device or emulator to test and interact with the app.
 
@@ -94,15 +84,9 @@ Birdconnect uses Jest for unit tests and Cypress for integration tests. To run t
 
 Using Yarn:
 
-bash
-Copy
-Edit
 yarn test
 Or using npm:
 
-bash
-Copy
-Edit
 npm test
 Contributing
 We welcome contributions to Birdconnect! If you'd like to contribute, follow these steps:
@@ -111,23 +95,14 @@ Fork the Repository: Click the fork button on GitHub.
 
 Create a New Branch:
 
-bash
-Copy
-Edit
 git checkout -b feature/your-feature
 Make Your Changes: Implement your feature or fix.
 
 Commit Your Changes:
 
-bash
-Copy
-Edit
 git commit -am 'Add new feature'
 Push Your Branch:
 
-bash
-Copy
-Edit
 git push origin feature/your-feature
 Create a Pull Request: Submit your changes by creating a pull request on GitHub.
 
@@ -146,8 +121,6 @@ Vite
 Capacitor
 
 vbnet
-Copy
-Edit
 
 ### How to Use:
 - **Tech Stack**: The tech stack includes React Native, Supabase (for database and authentication), OpenAI (for context learning), and Capacitor (for native functionality like camera and notifications).
